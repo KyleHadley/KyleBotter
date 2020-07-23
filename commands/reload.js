@@ -1,9 +1,14 @@
 "use strict";
 
+const { ownerID } = require('../config.json');
+
 module.exports = {
   name: 'reload',
   description: 'Reloads a command',
   execute(message, args) {
+    // Todo consider making this a global function
+    const isOwner = ownerID === message.author.id;
+    if(!isOwner) return message.channel.send(`Only the bot owner can reload commands.`);
 
     if (!args.length) return message.channel.send(`You didn't pass any command to reload, ${message.author}.`);
 
@@ -20,7 +25,7 @@ module.exports = {
     try {
       const newCommand = require(`./${command.name}.js`);
       message.client.commands.set(newCommand.name, newCommand);
-      message.channel.send(`Command "${comm.name}" was reloaded.`);
+      message.channel.send(`Command "${command.name}" was reloaded.`);
     } catch (error) {
       console.log(error);
       message.channel.send(`There was an error while reloading a command "${command.name}: \n"${error.message}".`);
