@@ -5,6 +5,9 @@ const Discord = require("discord.js");
 const { prefix, token } = require('./config.json');
 const fs = require("fs");
 
+const SQLite = require("better-sqlite3");
+const sql = new SQLite("./scores.sqlite");
+
 const cooldowns = new Discord.Collection();
 
 // Create a new discord client
@@ -28,10 +31,22 @@ console.log(`Loaded a total of ${commandFiles.length} commands.`)
 client.on("ready", () => {
     client.user.setActivity(`on ${client.guilds.cache.size} servers`);
     console.log(`Logged in as ${client.user.tag} on ${client.guilds.cache.size} servers, for ${client.users.cache.size} users.`);
-});
 
-// Messages with this prefix will be checked against our commands
-//const { prefix, token } = require('./config.json');
+    // Check if table "points" exists.
+    const table = sql.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name ='scores';").get();
+    if(!table['count(*)']) {
+        // If the table isn't there, create it and setup the database
+        sql.prepare("CREATE TABLE scores (id TEXT PRIMARY KEY, user TEXT, guild TEXT, points INTEGER, level INTEGER);").run();
+        // Esnure that the "id" row is always unique and indexed.
+        sql.prepare("CREATE UNIQUE INDEX idx_scores_id ON scores(id);").run();
+        sql.pragma("synchronous = 1");
+        sql.pragma("journal_mode = wal");
+    }
+
+    // Then we have two prepared statements to get and set the score data.
+    client.getScore = sql.prepare("SELECT * FROM scores WHERE user = ? AND guild = ?");
+    client.setScore = sql.prepare("INSERT OR REPLACE INTO scores (id, user, guild, points, level) VALUES (@id, @user, @guild, @points, @level);");
+});
 
 // Let's start by getting some useful functions that we'll use throughout
 // the bot, like logs and elevation features.
@@ -39,13 +54,16 @@ client.on("ready", () => {
 
 client.on("message", message => {
     // Ignore other bots and messages not beginning with our prefix
-    if (message.author.bot || !message.content.startsWith(prefix)) return;
+    if (message.author.bot) return;
 
+    IncrementPointsInGuild(message);
+
+    // Messages with this prefix will be checked against our commands
+    if(!message.content.startsWith(prefix)) return;
     const args = message.content.slice(prefix.length).trim().split(/ +/g);
     const commandName = args.shift().toLowerCase();
 
     console.log(`Message recieved from ${message.author.username}: "${message.content.trim()}".`);
-    
 
     // Look for command name or aliases
     const command = client.commands.get(commandName)
@@ -106,6 +124,36 @@ client.on("message", message => {
 
 client.login(token);
 
+
+function IncrementPointsInGuild(message) {
+    if (message.guild !== null) {
+        let score = client.getScore.get(message.author.id, message.guild.id);
+        // If we've never seen this use before, we need to define their initial values
+        if (!score) {
+            score = {
+                id: `${message.guild.id}-${message.author.id}`,
+                user: message.author.id,
+                guild: message.guild.id,
+                points: 0,
+                level: 1
+            };
+        };
+        // Increment score
+        score.points++;
+
+        // Calculate current level through math
+        const curLevel = Math.floor(0.1 * Math.sqrt(score.points));
+
+        // Check if user has leveled up and let them know if they have
+        if (score.level < curLevel) {
+            // Level up
+            score.level++;
+            message.reply(`You've leveled up to level **${curLevel}**! Congrats.`);
+        }
+
+        client.setScore.run(score);
+    }
+}
 /*function PokeUser(args, message) {
     let userToPoke = message.mentions.members.first();
     if (!userToPoke) {
@@ -118,20 +166,6 @@ client.login(token);
     }
 
 };*/
-
-/*function AgeSexLocation(args, message) {
-    let [age, sex, location] = args;
-
-    //Todo: Randomise value if omitted
-
-    return (`Hello ${message.author.username}, you are a ${age} year old ${sex} from ${location}.`);
-};*/
-
-// Send a message to the server and log it
-// function SendMessage(message, outputString) {
-//     console.log(`Sending: "${outputString}".`);
-//     message.channel.send(outputString);
-// };
 
 // Catch errors
 //NOTE: The debug event WILL output your token, so exercise caution when handing over a debug log.
