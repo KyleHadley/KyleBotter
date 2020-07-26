@@ -6,12 +6,14 @@ const { prefix, token } = require('./config.json');
 const fs = require("fs");
 
 const SQLite = require("better-sqlite3");
-const sql = new SQLite("./scores.sqlite");
+const scoresDb = new SQLite("./scores.sqlite");
+const sqlFuncs = require("./sqlFunctions");
 
 const cooldowns = new Discord.Collection();
 
 // Create a new discord client
 const client = new Discord.Client();
+exports.client = client;
 
 client.commands = new Discord.Collection();
 // Returns an array with all the file names in commands directory
@@ -33,19 +35,15 @@ client.on("ready", () => {
     console.log(`Logged in as ${client.user.tag} on ${client.guilds.cache.size} servers, for ${client.users.cache.size} users.`);
 
     // Check if table "points" exists.
-    const table = sql.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name ='scores';").get();
+    const table = scoresDb.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name ='scores';").get();
     if(!table['count(*)']) {
         // If the table isn't there, create it and setup the database
-        sql.prepare("CREATE TABLE scores (id TEXT PRIMARY KEY, user TEXT, guild TEXT, points INTEGER, level INTEGER);").run();
+        scoresDb.prepare("CREATE TABLE scores (id TEXT PRIMARY KEY, user TEXT, guild TEXT, points INTEGER, level INTEGER);").run();
         // Esnure that the "id" row is always unique and indexed.
-        sql.prepare("CREATE UNIQUE INDEX idx_scores_id ON scores(id);").run();
-        sql.pragma("synchronous = 1");
-        sql.pragma("journal_mode = wal");
+        scoresDb.prepare("CREATE UNIQUE INDEX idx_scores_id ON scores(id);").run();
+        scoresDb.pragma("synchronous = 1");
+        scoresDb.pragma("journal_mode = wal");
     }
-
-    // Then we have two prepared statements to get and set the score data.
-    client.getScore = sql.prepare("SELECT * FROM scores WHERE user = ? AND guild = ?");
-    client.setScore = sql.prepare("INSERT OR REPLACE INTO scores (id, user, guild, points, level) VALUES (@id, @user, @guild, @points, @level);");
 });
 
 // Let's start by getting some useful functions that we'll use throughout
@@ -127,7 +125,8 @@ client.login(token);
 
 function IncrementPointsInGuild(message) {
     if (message.guild !== null) {
-        let score = client.getScore.get(message.author.id, message.guild.id);
+        let score = sqlFuncs.getScore(message.author.id, message.guild.id);
+
         // If we've never seen this use before, we need to define their initial values
         if (!score) {
             score = {
@@ -151,7 +150,7 @@ function IncrementPointsInGuild(message) {
             message.reply(`You've leveled up to level **${curLevel}**! Congrats.`);
         }
 
-        client.setScore.run(score);
+        sqlFuncs.setScore(score);
     }
 }
 /*function PokeUser(args, message) {
