@@ -10,6 +10,7 @@ const outputAspectRatio = 1;
 module.exports = {
 	name: 'testemote',
 	description: 'Get an emote image and see it at its default large emote size',
+	usage: `[image link (ending with '.jpg' etc.)]`,
 	async execute(message, args) {
 
 		const canvas = Canvas.createCanvas(200, 50); // Create canvas to emote max pixel size

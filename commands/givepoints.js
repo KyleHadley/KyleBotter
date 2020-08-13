@@ -29,7 +29,7 @@ module.exports = {
 		//let userscore = funcs.getScore.get(user.id, message.guild.id);
 		let userscore = funcs.getScore(user.id, message.guild.id);
 		//client.getScore.get(message.author.id, message.guild.id);
-		console.log(`User: ${user} points ${userscore} adding ${pointsToAdd} points.`);
+		console.log(`User: ${user} points ${userscore.points} adding ${pointsToAdd} points.`);
 
 		// It's possible to give points to a user we haven't seen, so we need to initiate defaults here too!
 		if (!userscore) {

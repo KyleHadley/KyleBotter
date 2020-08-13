@@ -16,16 +16,33 @@ module.exports = {
 
 		const top10 = sql.prepare("SELECT * FROM scores WHERE guild = ? ORDER BY points DESC LIMIT 10;").all(message.guild.id);
 
+		//message.guild.members.cache.get(winningUserId);
+
 		// Paste scores onto an embed
 		const embed = new Discord.MessageEmbed().setTitle("Leaderboard");
 		embed.setAuthor(client.user.username, client.user.avatarURL());
 		embed.setDescription("The top 10 point leaders:");
 		embed.setColor(0x00AE86);
 
-		for(const data of top10){
-			embed.addFields({name: client.users.cache.get(data.user).tag, value: `${data.points} points (level ${data.level})`});
+		for (const data of top10) {
+
+			let userName = "Unknown User";
+
+			// TODO: Handle/remove users who have left the server
+			userName = client.users.cache.get(data.user);
+			if (!userName) {
+				userName = "Null";
+			}
+			else {
+				userName = userName = client.users.cache.get(data.user).username;
+			}
+
+			embed.addFields({ name: userName, value: `${data.points} points (level ${data.level})` });
+
+
+
 		}
-		
-		return message.channel.send({embed});
+
+		return message.channel.send({ embed });
 	},
 };

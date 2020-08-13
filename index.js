@@ -2,12 +2,25 @@
 
 // A reference to the Discord.js module
 const Discord = require("discord.js");
-const { prefix, token } = require('./config.json');
+const { prefix, token, ownerID } = require('./config.json');
 const fs = require("fs");
+
+const cron = require("node-cron");
+//let shell = require("shell.js)");
+
+cron.schedule("0 20 * * *", function () {
+    console.log("Scheduler running...");
+    //if(shell.exec("node scheduleTest.js").code !== 0){
+    //    console.log("Error, something went wrong with shell execution.");
+    //}
+    const st = require("./scheduleTest.js");
+    st.execute()
+});
 
 const SQLite = require("better-sqlite3");
 const scoresDb = new SQLite("./scores.sqlite");
 const sqlFuncs = require("./sqlFunctions");
+const ticketsDb = new SQLite("./lottoTickets.sqlite");
 
 const cooldowns = new Discord.Collection();
 
@@ -35,14 +48,25 @@ client.on("ready", () => {
     console.log(`Logged in as ${client.user.tag} on ${client.guilds.cache.size} servers, for ${client.users.cache.size} users.`);
 
     // Check if table "points" exists.
-    const table = scoresDb.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name ='scores';").get();
-    if(!table['count(*)']) {
+    const pointsTable = scoresDb.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name ='scores';").get();
+    if (!pointsTable['count(*)']) {
         // If the table isn't there, create it and setup the database
         scoresDb.prepare("CREATE TABLE scores (id TEXT PRIMARY KEY, user TEXT, guild TEXT, points INTEGER, level INTEGER);").run();
         // Esnure that the "id" row is always unique and indexed.
         scoresDb.prepare("CREATE UNIQUE INDEX idx_scores_id ON scores(id);").run();
         scoresDb.pragma("synchronous = 1");
         scoresDb.pragma("journal_mode = wal");
+    }
+
+    // Check if table "tickets" exists.
+    const ticketsTable = ticketsDb.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name ='lottoTickets';").get();
+    if (!ticketsTable['count(*)']) {
+        // If the table isn't there, create it and setup the database
+        ticketsDb.prepare("CREATE TABLE lottoTickets (id TEXT PRIMARY KEY, user TEXT, guild TEXT, tickets INTEGER);").run();
+        // Esnure that the "id" row is always unique and indexed.
+        ticketsDb.prepare("CREATE UNIQUE INDEX idx_lottoTickets_id ON lottoTickets(id);").run();
+        ticketsDb.pragma("synchronous = 1");
+        ticketsDb.pragma("journal_mode = wal");
     }
 });
 
@@ -57,7 +81,7 @@ client.on("message", message => {
     IncrementPointsInGuild(message);
 
     // Messages with this prefix will be checked against our commands
-    if(!message.content.startsWith(prefix)) return;
+    if (!message.content.startsWith(prefix)) return;
     const args = message.content.slice(prefix.length).trim().split(/ +/g);
     const commandName = args.shift().toLowerCase();
 
@@ -67,28 +91,33 @@ client.on("message", message => {
     const command = client.commands.get(commandName)
         || client.commands.find(cmd => cmd.aliases && cmd.aliases.includes(commandName));
 
-    if(!command) return;
+    if (!command) return;
 
     console.log(`Recognised command for '${commandName}'`);
 
     // Check if a command only works inside a server (e.g. a kick command)
-    if(command.guildOnly && message.channel.type !== 'text') {
+    if (command.guildOnly && message.channel.type !== 'text') {
         return message.reply("I can't execute that command inside DMs!");
     }
 
+    // Check if the bot owner tried to use this command
+    if(command.ownerOnly && message.author.id !== ownerID) {
+        return message.channel.send("Only the bot owner can use this command.");
+    }
+
     // Let the user know they forgot to provide arguments if the command requires it
-    if(command.args && !args.length) {
+    if (command.args && !args.length) {
         let reply = `You didn't provide any arguments, ${message.author}!`;
 
         // Append usage information to the message
-        if(command.usage) {
+        if (command.usage) {
             reply += `\nProper usage is: "${prefix}${command.name} ${command.usage}".`;
         }
 
         return message.channel.send(reply);
     }
 
-    if(!cooldowns.has(command.name)) {
+    if (!cooldowns.has(command.name)) {
         cooldowns.set(command.name, new Discord.Collection());
     }
 
@@ -97,10 +126,10 @@ client.on("message", message => {
     const cooldownAmount = (command.cooldown || 2) * 1000;
 
     // Check if enough time has passed before letting user use this command again
-    if(timestamps.has(message.author.id)) {
+    if (timestamps.has(message.author.id)) {
         const expirationTime = timestamps.get(message.author.id) + cooldownAmount;
 
-        if(now < expirationTime) {
+        if (now < expirationTime) {
             const timeLeft = (expirationTime - now) / 1000;
             return message.reply(`Please wait ${timeLeft.toFixed(1)} more second(s) before reusing the "${command.name}" command.`)
         }
