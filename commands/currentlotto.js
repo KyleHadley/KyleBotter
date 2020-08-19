@@ -13,7 +13,7 @@ const ticketCost = 5;
 module.exports = {
 	name: 'currentlotto',
 	description: "Shows the details of the current lottery in progress.",
-	aliases: ['checklotto', 'lotto'],
+	aliases: ['checklotto', 'lotto', 'lottery'],
 	guildOnly: true,
     execute(message) {
 		const guildId = message.guild.id;
@@ -26,11 +26,11 @@ module.exports = {
 
 		const totalTicketsPurchased = sqlFunc.totalLottoTickets(guildId);
 
-		if(totalTicketsPurchased.length < 1) {
+		if(totalTicketsPurchased < 1) {
 			return message.reply("Error, could not find any tickets in the lottery database.");
 		}
 	
-		console.log(`${totalTicketsPurchased.length} total tickets counted across ${eligibleUsers.length} users.`);
+		console.log(`${totalTicketsPurchased} total tickets counted across ${eligibleUsers.length} users.`);
 
 
 		let lotteryWinnings = baseWinnings + (totalTicketsPurchased * winningsMultiplier);

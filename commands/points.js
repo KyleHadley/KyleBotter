@@ -13,10 +13,9 @@ module.exports = {
 	execute(message, args) {
 		const guildId = message.guild.id;
 
-		if(args > 0){
+		const targetUser = message.mentions.users.first() || message.client.users.cache.get(args[0]);
+		if(targetUser){
 			// Allow user to query another users points
-			//let targetUser = args[1];
-			const targetUser = message.mentions.users.first() || message.client.users.cache.get(args[0]);
 			let score = sqlFunc.getScore(targetUser.id, guildId);
 			if(!score)
 			{
