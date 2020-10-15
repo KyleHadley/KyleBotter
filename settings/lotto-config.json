@@ -1,0 +1,7 @@
+{
+    "ticketCost": 5,
+    "maxTicketsForPurchase": 10,
+    "baseWinnings": 60,
+    "winningsMultiplier": 3,
+    "minParticipants": 1
+}

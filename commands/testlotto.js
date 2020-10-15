@@ -3,11 +3,7 @@ const sqlFunc = require("../sqlFunctions");
 const SQLite = require("better-sqlite3");
 const ticketsDb = new SQLite("./lottoTickets.sqlite");
 
-// Minimum participants needed for a lottery to go ahead.
-const minParticipants = 1;
-// base lottery winnings
-const baseWinnings = 30; //Todo: Base it variable to number of users in a guild?
-const winningsMultiplier = 3;
+const { minParticipants, baseWinnings, winningsMultiplier } = require('../settings/lotto-config.json');
 
 module.exports = {
 	name: 'testlotto',
