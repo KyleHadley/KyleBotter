@@ -1,6 +1,6 @@
 {
-    "token": "NzMwODE2MTM2NjE0MjQ4NTAw.Xwc_8A.IMChoYogwJe7aQXc44_q0j2Oj98",
+    "token": "YourBotToken",
     "prefix": "-",
-    "ownerID": "186991221082816512",
-    "mainGuild": "240523866026278913"
+    "ownerID": "YourPersonalID",
+    "mainGuild": "MainGuildID"
 }
